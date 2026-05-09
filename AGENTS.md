@@ -19,4 +19,5 @@ This is a frontend-only React + Vite + TypeScript SPA ("Valorant Habit Observato
 - There are no automated tests configured (no test runner or test scripts in `package.json`).
 - `npm run lint` has a pre-existing `prefer-const` error in `src/analytics/computeHabitAnalytics.ts`.
 - The app generates mock data deterministically from a Riot ID input — no real API calls are made.
+- There is a pre-existing runtime error in the mock data pipeline: entering a Riot ID triggers `Cannot read properties of undefined (reading 'day')`, resulting in zero-data charts. The UI renders all sections but data is empty.
 - To expose the dev server on all interfaces (useful in Cloud Agent VMs), run `npm run dev -- --host 0.0.0.0`.
