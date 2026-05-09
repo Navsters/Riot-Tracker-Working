@@ -81,28 +81,55 @@ export function generateMockValorantMatches(riotId: string, horizonDays = 90): V
     const sliceStart = dateMax([windowStart, weekMonday]);
     const sliceEnd = dateMin([windowEnd, endOfISOWeek(weekMonday)]);
 
-    if (+sliceStart > +sliceEnd) continue;
+    const sliceT0 = sliceStart.getTime();
+    const sliceT1 = sliceEnd.getTime();
+    if (!Number.isFinite(sliceT0) || !Number.isFinite(sliceT1) || sliceT0 > sliceT1) continue;
 
-    const playableDaysRaw = eachDayOfInterval({
-      start: sliceStart,
-      end: sliceEnd,
-    }).map((day) => ({
+    /** `eachDayOfInterval` mutates `interval.start`; never pass `windowStart` by reference or it walks forward every week */
+
+    const intervalStart = new Date(sliceT0);
+    const intervalEnd = new Date(sliceT1);
+
+    const calendarDays = eachDayOfInterval({
+      start: intervalStart,
+      end: intervalEnd,
+    });
+
+    /** Empty slice skips all downstream quota math */
+
+    if (!calendarDays.length) continue;
+
+    const playableDaysRaw = calendarDays.map((day) => ({
       day,
       eligible: rng() > 0.18,
       weight: 0.42 + rng() * 2.08,
     }));
 
     let bucket = playableDaysRaw.filter((d) => d.eligible);
-    if (!bucket.length) {
-      playableDaysRaw[Math.floor(rng() * playableDaysRaw.length)]!.eligible = true;
+
+    if (!bucket.length && playableDaysRaw.length > 0) {
+      const len = playableDaysRaw.length;
+      /** Floor can theoretically land equal to length with float noise near 1 → clamp */
+
+      const idx = Math.min(len - 1, Math.max(0, Math.floor(rng() * len)));
+      const pin = playableDaysRaw[idx];
+
+      if (pin) pin.eligible = true;
+
       bucket = playableDaysRaw.filter((d) => d.eligible);
     }
+
+    /** Need at least one day or `bucket[0]` is undefined in the night-cap block */
+
+    if (!bucket.length) continue;
 
     const weeklyMinutes = Math.round(
       Math.min(58 * 60, Math.max(39 * 60, (43.5 + (rng() - 0.5) * 8.5) * 60)),
     );
 
-    const weightSum = bucket.reduce((a, row) => a + row.weight, 0);
+    const weightSum = bucket.reduce((accum, row) => accum + row.weight, 0);
+
+    if (!(weightSum > 0) || !Number.isFinite(weightSum)) continue;
 
     const quotas = bucket.map((row) => (weeklyMinutes * row.weight) / weightSum);
 
@@ -110,9 +137,8 @@ export function generateMockValorantMatches(riotId: string, horizonDays = 90): V
       pushDaySessions(row.day, quotas[idx] ?? 0);
     });
 
-    if (rng() > 0.78) {
-      const row =
-        bucket[Math.floor(rng() * bucket.length)]!;
+    if (rng() > 0.78 && bucket.length) {
+      const row = bucket[Math.floor(rng() * bucket.length)]!;
       pushDaySessions(row.day, Math.round(rng() * 80 + 30));
     }
   }
