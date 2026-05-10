@@ -16,6 +16,7 @@ const chartGrid = '#1f2937';
 const chartAccent = '#ff5d75';
 const chartSecondary = '#3de1e9';
 
+// TEST UPDATE: dashboard context marker for GitHub timestamp.
 const FALLBACK_ANALYTICS: HabitsAnalytics = computeHabitAnalytics([]);
 
 function formatChartHours(value: unknown): string {
